@@ -8,14 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useRef } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import {
-  CheckCircle,
-  Crown,
-  Sparkles,
-  ArrowRight,
-  Gift,
-  Star,
-} from 'lucide-react-native';
+import { CircleCheck as CheckCircle, Crown, Sparkles, ArrowRight, Gift, Star } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 

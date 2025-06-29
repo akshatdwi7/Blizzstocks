@@ -10,23 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import {
-  Crown,
-  Sparkles,
-  TrendingUp,
-  Shield,
-  Zap,
-  BarChart3,
-  Bell,
-  Target,
-  CheckCircle,
-  Star,
-  ArrowRight,
-  Users,
-  Award,
-  Brain,
-  Lock,
-} from 'lucide-react-native';
+import { Crown, Sparkles, TrendingUp, Shield, Zap, ChartBar as BarChart3, Bell, Target, CircleCheck as CheckCircle, Star, ArrowRight, Users, Award, Brain, Lock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 
