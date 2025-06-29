@@ -58,8 +58,13 @@ export class RazorpayPayment {
         return;
       }
 
-      if (window.Razorpay) {
+      if (typeof window !== 'undefined' && window.Razorpay) {
         resolve(true);
+        return;
+      }
+
+      if (typeof document === 'undefined') {
+        resolve(false);
         return;
       }
 

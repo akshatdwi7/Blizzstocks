@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { Filter, SlidersHorizontal, TrendingUp, TrendingDown, DollarSign, ChartBar as BarChart3, Globe, Building2, Zap, ArrowRight, Search, X, Play, Save, Crown, Sparkles, Target, Activity, TriangleAlert as AlertTriangle, RefreshCw, Wifi, WifiOff, Database, Clock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StockCard } from '@/components/StockCard';
-import { RealTimeChart } from '@/components/RealTimeChart';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface ScreenerCriteria {
@@ -259,7 +258,7 @@ export default function ScreenerScreen() {
     {
       id: 'large_cap',
       name: 'Large Cap Stocks',
-      description: 'Market Cap &gt; 20,000 Cr',
+      description: 'Market Cap > 20,000 Cr',
       icon: Building2,
       color: theme.colors.accent,
       criteria: {
@@ -407,7 +406,7 @@ export default function ScreenerScreen() {
   };
 
   const navigateToPremium = () => {
-    router.push('/premium');
+    router.push('/(tabs)/premium');
   };
 
   const renderCriteriaInput = (key: keyof ScreenerCriteria, label: string, unit: string = '') => {
@@ -607,8 +606,8 @@ export default function ScreenerScreen() {
               <Text style={[styles.overviewLabel, { color: theme.colors.textSecondary }]}>High Volume</Text>
             </View>
             <View style={styles.overviewStat}>
-              <Text style={styles.overviewNumber}>12%</Text>
-              <Text style={styles.overviewLabel}>Oversold (RSI &lt; 30)</Text>
+              <Text style={[styles.overviewNumber, { color: theme.colors.error }]}>12%</Text>
+              <Text style={[styles.overviewLabel, { color: theme.colors.textSecondary }]}>Oversold</Text>
             </View>
           </View>
         </ScrollView>

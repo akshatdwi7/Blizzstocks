@@ -18,21 +18,27 @@ interface Stock {
 interface StockCardProps {
   stock: Stock;
   showDetails?: boolean;
+  onPress?: () => void;
+  style?: any;
 }
 
-export function StockCard({ stock, showDetails = false }: StockCardProps) {
+export function StockCard({ stock, showDetails = false, onPress, style }: StockCardProps) {
   const { theme } = useTheme();
   const isPositive = stock.change >= 0;
   
   const styles = createStyles(theme);
   
   const handlePress = () => {
-    router.push(`/stock/${stock.symbol}`);
+    if (onPress) {
+      onPress();
+    } else {
+      router.push(`/stock/${stock.symbol}`);
+    }
   };
 
   return (
     <TouchableOpacity 
-      style={[styles.container, { backgroundColor: theme.colors.surface }]} 
+      style={[styles.container, { backgroundColor: theme.colors.surface }, style]} 
       onPress={handlePress}
     >
       <View style={styles.header}>
@@ -41,7 +47,7 @@ export function StockCard({ stock, showDetails = false }: StockCardProps) {
           <Text style={[styles.name, { color: theme.colors.textSecondary }]} numberOfLines={1}>{stock.name}</Text>
         </View>
         <View style={styles.priceContainer}>
-          <Text style={[styles.price, { color: theme.colors.text }]}>${stock.price.toFixed(2)}</Text>
+          <Text style={[styles.price, { color: theme.colors.text }]}>₹{stock.price.toFixed(2)}</Text>
           <View style={[
             styles.changeContainer, 
             { backgroundColor: isPositive ? `${theme.colors.positive}20` : `${theme.colors.negative}20` }
