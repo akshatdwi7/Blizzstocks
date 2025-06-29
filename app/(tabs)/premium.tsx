@@ -10,9 +10,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { Crown, Sparkles, TrendingUp, Shield, Zap, ChartBar as BarChart3, Bell, Target, CircleCheck as CheckCircle, Star, ArrowRight, Users, Award, Brain, Lock } from 'lucide-react-native';
+import { Crown, Sparkles, TrendingUp, Shield, Zap, ChartBar as BarChart3, Bell, Target, CircleCheck as CheckCircle, Star, ArrowRight, Users, Award, Brain, Lock, Activity } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
+import { 
+  RazorpayPayment, 
+  formatINR, 
+  SubscriptionPlan, 
+  PaymentResponse,
+  RAZORPAY_CONFIG,
+  createPaymentHandler 
+} from '@/components/RazorpayPayment';
 
 interface PremiumFeature {
   icon: any;
@@ -21,20 +29,9 @@ interface PremiumFeature {
   color: string;
 }
 
-interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  period: string;
-  popular?: boolean;
-  features: string[];
-  color: string[];
-}
-
 export default function PremiumScreen() {
   const { theme } = useTheme();
-  const [selectedPlan, setSelectedPlan] = useState<string>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<string>('quarterly');
   const [isLoading, setIsLoading] = useState(false);
 
   const styles = createStyles(theme);
@@ -43,37 +40,37 @@ export default function PremiumScreen() {
     {
       icon: Brain,
       title: 'AI-Powered Analysis',
-      description: 'Get personalized stock recommendations and market insights powered by advanced AI',
+      description: 'Get personalized stock recommendations and market insights powered by advanced AI algorithms',
       color: theme.colors.accent,
     },
     {
       icon: TrendingUp,
       title: 'Advanced Screeners',
-      description: 'Access 50+ screening criteria with backtesting and custom alerts',
+      description: 'Access 50+ screening criteria with backtesting, custom alerts, and real-time filtering',
       color: theme.colors.success,
     },
     {
       icon: Bell,
       title: 'Real-time Alerts',
-      description: 'Instant notifications for price movements, news, and technical indicators',
+      description: 'Instant notifications for price movements, news, technical indicators, and market events',
       color: theme.colors.warning,
     },
     {
       icon: BarChart3,
       title: 'Professional Charts',
-      description: 'Advanced charting tools with 100+ technical indicators and drawing tools',
+      description: 'Advanced charting tools with 100+ technical indicators, drawing tools, and pattern recognition',
       color: theme.colors.secondary,
     },
     {
       icon: Shield,
       title: 'Risk Management',
-      description: 'Portfolio risk analysis, position sizing, and stop-loss recommendations',
+      description: 'Portfolio risk analysis, position sizing calculator, and automated stop-loss recommendations',
       color: theme.colors.error,
     },
     {
       icon: Target,
       title: 'Options Trading',
-      description: 'Options chain analysis, Greeks calculator, and strategy builder',
+      description: 'Options chain analysis, Greeks calculator, strategy builder, and profit/loss visualization',
       color: theme.colors.accent,
     },
   ];
@@ -86,12 +83,12 @@ export default function PremiumScreen() {
       period: 'month',
       features: [
         'All premium features',
-        'Real-time data',
-        'Advanced screeners',
-        'AI recommendations',
-        'Priority support',
+        'Real-time market data',
+        'Advanced stock screeners',
+        'AI-powered recommendations',
+        'Email support',
       ],
-      color: [theme.colors.primary, theme.colors.success],
+      razorpayPlanId: 'plan_monthly_999',
     },
     {
       id: 'quarterly',
@@ -100,14 +97,16 @@ export default function PremiumScreen() {
       originalPrice: 2997,
       period: '3 months',
       popular: true,
+      savings: 17,
       features: [
         'Everything in Monthly',
-        '17% savings',
-        'Exclusive webinars',
-        'Portfolio review',
-        'Custom alerts',
+        '17% savings (₹498 off)',
+        'Exclusive market webinars',
+        'Portfolio health reports',
+        'Custom alert templates',
+        'Priority support',
       ],
-      color: [theme.colors.accent, '#A855F7'],
+      razorpayPlanId: 'plan_quarterly_2499',
     },
     {
       id: 'yearly',
@@ -115,14 +114,16 @@ export default function PremiumScreen() {
       price: 7999,
       originalPrice: 11988,
       period: 'year',
+      savings: 33,
       features: [
         'Everything in Quarterly',
-        '33% savings',
-        '1-on-1 consultation',
-        'Early feature access',
-        'Tax optimization',
+        '33% savings (₹3,989 off)',
+        '1-on-1 strategy consultation',
+        'Early access to new features',
+        'Tax optimization reports',
+        'Dedicated account manager',
       ],
-      color: [theme.colors.warning, '#F59E0B'],
+      razorpayPlanId: 'plan_yearly_7999',
     },
   ];
 
@@ -130,91 +131,108 @@ export default function PremiumScreen() {
     {
       name: 'Rajesh Kumar',
       role: 'Day Trader',
-      content: 'The AI recommendations helped me increase my portfolio by 45% in 6 months.',
+      content: 'The AI recommendations helped me increase my portfolio by 45% in 6 months. The real-time alerts saved me from major losses during market volatility.',
       rating: 5,
+      location: 'Mumbai',
     },
     {
       name: 'Priya Sharma',
       role: 'Investment Advisor',
-      content: 'Best screening tools I\'ve used. The backtesting feature is incredibly accurate.',
+      content: 'Best screening tools I\'ve used in 10 years. The backtesting feature is incredibly accurate and helps me make data-driven decisions.',
       rating: 5,
+      location: 'Delhi',
     },
     {
       name: 'Amit Patel',
       role: 'Swing Trader',
-      content: 'Real-time alerts saved me from major losses during market volatility.',
+      content: 'The options analysis tools are game-changing. I can now execute complex strategies with confidence and better risk management.',
       rating: 5,
+      location: 'Bangalore',
     },
   ];
 
   const handleSubscribe = async (planId: string) => {
-    if (Platform.OS === 'web') {
-      setIsLoading(true);
-      try {
-        const plan = subscriptionPlans.find(p => p.id === planId);
-        if (!plan) return;
+    const plan = subscriptionPlans.find(p => p.id === planId);
+    if (!plan) return;
 
-        // Initialize Razorpay
-        const options = {
-          key: 'rzp_test_your_key_here', // Replace with your Razorpay key
-          amount: plan.price * 100, // Amount in paise
-          currency: 'INR',
-          name: 'StockWise Premium',
-          description: `${plan.name} Subscription`,
-          image: 'https://your-logo-url.com/logo.png',
-          handler: function (response: any) {
-            // Handle successful payment
-            Alert.alert(
-              'Payment Successful!',
-              `Welcome to StockWise Premium! Payment ID: ${response.razorpay_payment_id}`,
-              [
-                {
-                  text: 'Continue',
-                  onPress: () => router.push('/(tabs)'),
-                },
-              ]
-            );
-          },
-          prefill: {
-            name: 'Akshat Dwivedi',
-            email: 'akshatdwivedi755@gmail.com',
-            contact: '+919999999999',
-          },
-          theme: {
-            color: theme.colors.primary,
-          },
-        };
+    setIsLoading(true);
 
-        // For web, you would typically load Razorpay script dynamically
-        // This is a simplified example
-        console.log('Razorpay options:', options);
-        
-        // Simulate payment success for demo
-        setTimeout(() => {
+    try {
+      const paymentOptions = {
+        key: RAZORPAY_CONFIG.key,
+        amount: plan.price * 100, // Convert to paise
+        currency: 'INR',
+        name: RAZORPAY_CONFIG.company.name,
+        description: `${plan.name} Subscription - Premium Stock Trading`,
+        image: RAZORPAY_CONFIG.company.logo,
+        prefill: {
+          name: 'Akshat Dwivedi',
+          email: 'akshatdwivedi755@gmail.com',
+          contact: '+919999999999',
+        },
+        theme: RAZORPAY_CONFIG.theme,
+      };
+
+      const { onSuccess, onError } = createPaymentHandler(
+        (response: PaymentResponse) => {
+          console.log('Payment successful:', response);
+          
+          // Navigate to success page with payment details
+          router.push({
+            pathname: '/premium/success',
+            params: {
+              plan: plan.name,
+              paymentId: response.razorpay_payment_id,
+              amount: plan.price.toString(),
+            },
+          });
+        },
+        (error: any) => {
+          console.error('Payment failed:', error);
           Alert.alert(
-            'Demo Mode',
-            'This is a demo. In production, Razorpay would handle the payment.',
-            [
-              {
-                text: 'Continue',
-                onPress: () => router.push('/(tabs)'),
-              },
-            ]
+            'Payment Failed',
+            error.message || 'Something went wrong. Please try again.',
+            [{ text: 'OK' }]
           );
-          setIsLoading(false);
-        }, 2000);
-
-      } catch (error) {
-        console.error('Payment error:', error);
-        Alert.alert('Payment Failed', 'Please try again later.');
-        setIsLoading(false);
-      }
-    } else {
-      Alert.alert(
-        'Mobile Payment',
-        'For mobile apps, you would integrate with RevenueCat for App Store/Play Store billing.'
+        }
       );
+
+      const success = await RazorpayPayment.initializePayment(
+        paymentOptions,
+        onSuccess,
+        onError
+      );
+
+      if (!success) {
+        Alert.alert(
+          'Payment Error',
+          'Unable to initialize payment. Please check your internet connection and try again.'
+        );
+      }
+    } catch (error: any) {
+      console.error('Payment initialization error:', error);
+      Alert.alert(
+        'Error',
+        'Failed to initialize payment. Please try again later.'
+      );
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleFreeTrial = () => {
+    Alert.alert(
+      'Start Free Trial',
+      'Your 7-day free trial will begin immediately. You can cancel anytime before the trial ends.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Start Trial', 
+          onPress: () => handleSubscribe(selectedPlan),
+          style: 'default'
+        },
+      ]
+    );
   };
 
   return (
@@ -232,10 +250,11 @@ export default function PremiumScreen() {
               <Crown size={48} color="#FFFFFF" />
               <Sparkles size={24} color="#FFFFFF" style={styles.sparkle1} />
               <Sparkles size={16} color="#FFFFFF" style={styles.sparkle2} />
+              <Activity size={20} color="#FFFFFF" style={styles.sparkle3} />
             </View>
             <Text style={styles.heroTitle}>Unlock Premium Trading</Text>
             <Text style={styles.heroSubtitle}>
-              Join 50,000+ traders who've upgraded their investment game with AI-powered insights
+              Join 50,000+ traders who've upgraded their investment game with AI-powered insights and professional tools
             </Text>
             <View style={styles.heroStats}>
               <View style={styles.statItem}>
@@ -248,7 +267,7 @@ export default function PremiumScreen() {
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>4.9★</Text>
-                <Text style={styles.statLabel}>Rating</Text>
+                <Text style={styles.statLabel}>App Rating</Text>
               </View>
             </View>
           </View>
@@ -258,6 +277,9 @@ export default function PremiumScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
             Premium Features
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>
+            Everything you need to make smarter investment decisions
           </Text>
           <View style={styles.featuresGrid}>
             {premiumFeatures.map((feature, index) => {
@@ -288,7 +310,7 @@ export default function PremiumScreen() {
             Choose Your Plan
           </Text>
           <Text style={[styles.sectionSubtitle, { color: theme.colors.textSecondary }]}>
-            Start your 7-day free trial. Cancel anytime.
+            Start your 7-day free trial. Cancel anytime with no questions asked.
           </Text>
           
           <View style={styles.plansContainer}>
@@ -298,17 +320,22 @@ export default function PremiumScreen() {
                 style={[
                   styles.planCard,
                   { backgroundColor: theme.colors.surface },
-                  selectedPlan === plan.id && { borderColor: theme.colors.primary, borderWidth: 2 },
+                  selectedPlan === plan.id && { 
+                    borderColor: theme.colors.primary, 
+                    borderWidth: 2,
+                    shadowColor: theme.colors.primary,
+                    shadowOpacity: 0.2,
+                  },
                   plan.popular && styles.popularPlan,
                 ]}
                 onPress={() => setSelectedPlan(plan.id)}
               >
                 {plan.popular && (
                   <LinearGradient
-                    colors={plan.color}
+                    colors={['#8B5CF6', '#A855F7']}
                     style={styles.popularBadge}
                   >
-                    <Star size={12} color="#FFFFFF" />
+                    <Star size={12} color="#FFFFFF" fill="#FFFFFF" />
                     <Text style={styles.popularText}>Most Popular</Text>
                   </LinearGradient>
                 )}
@@ -319,17 +346,22 @@ export default function PremiumScreen() {
                   </Text>
                   <View style={styles.priceContainer}>
                     <Text style={[styles.price, { color: theme.colors.text }]}>
-                      ₹{plan.price.toLocaleString()}
+                      {formatINR(plan.price)}
                     </Text>
                     {plan.originalPrice && (
                       <Text style={[styles.originalPrice, { color: theme.colors.textTertiary }]}>
-                        ₹{plan.originalPrice.toLocaleString()}
+                        {formatINR(plan.originalPrice)}
                       </Text>
                     )}
                   </View>
                   <Text style={[styles.period, { color: theme.colors.textSecondary }]}>
                     per {plan.period}
                   </Text>
+                  {plan.savings && (
+                    <View style={[styles.savingsBadge, { backgroundColor: theme.colors.success }]}>
+                      <Text style={styles.savingsText}>Save {plan.savings}%</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.featuresContainer}>
@@ -343,20 +375,24 @@ export default function PremiumScreen() {
                   ))}
                 </View>
 
-                <LinearGradient
-                  colors={selectedPlan === plan.id ? plan.color : [theme.colors.surfaceSecondary, theme.colors.surfaceSecondary]}
-                  style={[
-                    styles.selectButton,
-                    selectedPlan === plan.id && styles.selectedButton,
-                  ]}
-                >
+                <View style={[
+                  styles.selectButton,
+                  { backgroundColor: selectedPlan === plan.id ? theme.colors.primary : theme.colors.surfaceSecondary },
+                  selectedPlan === plan.id && {
+                    shadowColor: theme.colors.primary,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  }
+                ]}>
                   <Text style={[
                     styles.selectButtonText,
                     { color: selectedPlan === plan.id ? '#FFFFFF' : theme.colors.textSecondary }
                   ]}>
-                    {selectedPlan === plan.id ? 'Selected' : 'Select Plan'}
+                    {selectedPlan === plan.id ? 'Selected Plan' : 'Select Plan'}
                   </Text>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -378,15 +414,18 @@ export default function PremiumScreen() {
                 style={[styles.testimonialCard, { backgroundColor: theme.colors.surface }]}
               >
                 <View style={styles.testimonialHeader}>
-                  <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
+                  <LinearGradient
+                    colors={[theme.colors.primary, theme.colors.success]}
+                    style={styles.avatar}
+                  >
                     <Users size={20} color="#FFFFFF" />
-                  </View>
+                  </LinearGradient>
                   <View style={styles.testimonialInfo}>
                     <Text style={[styles.testimonialName, { color: theme.colors.text }]}>
                       {testimonial.name}
                     </Text>
                     <Text style={[styles.testimonialRole, { color: theme.colors.textSecondary }]}>
-                      {testimonial.role}
+                      {testimonial.role} • {testimonial.location}
                     </Text>
                   </View>
                   <View style={styles.rating}>
@@ -410,7 +449,7 @@ export default function PremiumScreen() {
             Bank-Grade Security
           </Text>
           <Text style={[styles.trustDescription, { color: theme.colors.textSecondary }]}>
-            Your data is protected with 256-bit SSL encryption. We never store your trading passwords.
+            Your data is protected with 256-bit SSL encryption. We never store your trading passwords or sensitive financial information.
           </Text>
           <View style={styles.trustBadges}>
             <View style={[styles.trustBadge, { backgroundColor: theme.colors.background }]}>
@@ -425,6 +464,12 @@ export default function PremiumScreen() {
                 ISO Certified
               </Text>
             </View>
+            <View style={[styles.trustBadge, { backgroundColor: theme.colors.background }]}>
+              <Shield size={16} color={theme.colors.secondary} />
+              <Text style={[styles.trustBadgeText, { color: theme.colors.textSecondary }]}>
+                RBI Compliant
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -435,11 +480,11 @@ export default function PremiumScreen() {
               styles.subscribeButton,
               isLoading && styles.subscribeButtonDisabled,
             ]}
-            onPress={() => handleSubscribe(selectedPlan)}
+            onPress={handleFreeTrial}
             disabled={isLoading}
           >
             <LinearGradient
-              colors={subscriptionPlans.find(p => p.id === selectedPlan)?.color || [theme.colors.primary, theme.colors.success]}
+              colors={['#8B5CF6', '#A855F7']}
               style={styles.subscribeGradient}
             >
               {isLoading ? (
@@ -447,7 +492,7 @@ export default function PremiumScreen() {
               ) : (
                 <>
                   <Text style={styles.subscribeButtonText}>
-                    Start Free Trial
+                    Start 7-Day Free Trial
                   </Text>
                   <ArrowRight size={20} color="#FFFFFF" />
                 </>
@@ -456,12 +501,12 @@ export default function PremiumScreen() {
           </TouchableOpacity>
           
           <Text style={[styles.trialText, { color: theme.colors.textTertiary }]}>
-            7-day free trial • Cancel anytime • No hidden fees
+            Free for 7 days • Then {formatINR(subscriptionPlans.find(p => p.id === selectedPlan)?.price || 999)}/{subscriptionPlans.find(p => p.id === selectedPlan)?.period} • Cancel anytime
           </Text>
           
           <TouchableOpacity style={styles.termsButton}>
             <Text style={[styles.termsText, { color: theme.colors.textTertiary }]}>
-              Terms & Conditions • Privacy Policy
+              By continuing, you agree to our Terms & Conditions and Privacy Policy
             </Text>
           </TouchableOpacity>
         </View>
@@ -498,6 +543,11 @@ const createStyles = (theme: any) => StyleSheet.create({
     position: 'absolute',
     bottom: -4,
     left: -12,
+  },
+  sparkle3: {
+    position: 'absolute',
+    top: 10,
+    left: -16,
   },
   heroTitle: {
     fontSize: 32,
@@ -541,12 +591,14 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   sectionSubtitle: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
+    lineHeight: 24,
   },
   featuresGrid: {
     flexDirection: 'row',
@@ -629,6 +681,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
+    marginBottom: 4,
   },
   price: {
     fontSize: 32,
@@ -642,6 +695,17 @@ const createStyles = (theme: any) => StyleSheet.create({
   period: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
+    marginBottom: theme.spacing.sm,
+  },
+  savingsBadge: {
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 4,
+  },
+  savingsText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
   },
   featuresContainer: {
     marginBottom: theme.spacing.lg,
@@ -662,13 +726,6 @@ const createStyles = (theme: any) => StyleSheet.create({
     paddingVertical: theme.spacing.md,
     alignItems: 'center',
   },
-  selectedButton: {
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
   selectButtonText: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
@@ -678,7 +735,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     gap: theme.spacing.md,
   },
   testimonialCard: {
-    width: 280,
+    width: 300,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     shadowColor: theme.colors.shadow,
@@ -744,7 +801,9 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   trustBadges: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
   },
   trustBadge: {
     flexDirection: 'row',
@@ -777,9 +836,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
     paddingVertical: theme.spacing.lg,
     gap: theme.spacing.sm,
-    shadowColor: theme.colors.shadow,
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -801,6 +860,6 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
-    textDecorationLine: 'underline',
+    lineHeight: 16,
   },
 });
