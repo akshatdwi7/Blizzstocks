@@ -1,15 +1,13 @@
 import { Platform, Alert } from 'react-native';
 
-// For React Native (mobile)
-let RazorpayCheckout: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    RazorpayCheckout = require('react-native-razorpay').default;
-  } catch (error) {
-    console.warn('Razorpay not available on this platform');
-  }
+// Payment response interface
+export interface PaymentResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id?: string;
+  razorpay_signature?: string;
 }
 
+// Razorpay options interface
 interface RazorpayOptions {
   key: string;
   amount: number;
@@ -32,12 +30,20 @@ interface RazorpayOptions {
   };
 }
 
-export interface PaymentResponse {
-  razorpay_payment_id: string;
-  razorpay_order_id?: string;
-  razorpay_signature?: string;
+// Subscription plan interface
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  period: string;
+  features: string[];
+  popular?: boolean;
+  savings?: number;
+  razorpayPlanId?: string;
 }
 
+// Global Razorpay declaration for web
 declare global {
   interface Window {
     Razorpay: any;
@@ -73,21 +79,30 @@ export class RazorpayPayment {
     if (Platform.OS === 'web') {
       return this.initializeWebPayment(options, onSuccess, onError);
     } else {
-      // For mobile platforms, show a message that payment is not available in development
+      // For mobile platforms in development, show simulation
       Alert.alert(
-        'Payment Not Available',
-        'Payment functionality requires a production build. In development, this would normally open the Razorpay payment interface.',
+        'Payment Simulation',
+        'In a production app with Expo Dev Client or EAS Build, this would open the native Razorpay payment interface.\n\nFor now, we\'ll simulate the payment flow.',
         [
           {
             text: 'Simulate Success',
             onPress: () => {
-              // Simulate a successful payment for development
-              onSuccess({
-                razorpay_payment_id: 'pay_dev_' + Date.now(),
-                razorpay_order_id: 'order_dev_' + Date.now(),
-                razorpay_signature: 'sig_dev_' + Date.now(),
-              });
+              // Simulate successful payment
+              setTimeout(() => {
+                onSuccess({
+                  razorpay_payment_id: 'pay_sim_' + Date.now(),
+                  razorpay_order_id: 'order_sim_' + Date.now(),
+                  razorpay_signature: 'sig_sim_' + Date.now(),
+                });
+              }, 1000);
             },
+          },
+          {
+            text: 'Simulate Failure',
+            onPress: () => {
+              onError(new Error('Payment failed - User cancelled'));
+            },
+            style: 'destructive',
           },
           {
             text: 'Cancel',
@@ -144,22 +159,9 @@ export const formatINR = (amount: number): string => {
   }).format(amount);
 };
 
-// Subscription plan types
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  period: string;
-  features: string[];
-  popular?: boolean;
-  savings?: number;
-  razorpayPlanId?: string;
-}
-
 // Payment configuration
 export const RAZORPAY_CONFIG = {
-  // Note: Replace with your actual Razorpay key for production
+  // Test key for development - replace with your actual key
   key: Platform.OS === 'web' ? 'rzp_test_demo_key' : 'rzp_test_demo_key',
   company: {
     name: 'StockWise',
@@ -171,10 +173,9 @@ export const RAZORPAY_CONFIG = {
   },
 };
 
-// Create order utility (you'll need to implement this on your backend)
+// Create order utility
 export const createRazorpayOrder = async (amount: number, currency: string = 'INR') => {
   try {
-    // This should call your backend API to create a Razorpay order
     const response = await fetch('/api/create-order', {
       method: 'POST',
       headers: {
