@@ -79,7 +79,6 @@ export function RealTimeChart({
   }, [data, labels]);
 
   const chartColor = isPositive ? theme.colors.success : theme.colors.error;
-  const screenWidth = Dimensions.get('window').width;
 
   return (
     <View style={[styles.container, { height: height + 60 }]}>
@@ -122,8 +121,6 @@ export function RealTimeChart({
               }}
               contentInset={{ top: 20, bottom: 20, left: 10, right: 10 }}
               curve={shape.curveMonotoneX}
-              animate={animated}
-              animationDuration={300}
             >
               {showGrid && (
                 <Grid 
