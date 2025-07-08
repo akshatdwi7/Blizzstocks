@@ -20,7 +20,6 @@ function RootLayoutContent() {
         <Stack.Screen name="screener/results" />
         <Stack.Screen name="chat" />
         <Stack.Screen name="premium/success" />
-        <Stack.Screen name="edit-profile" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={isDark ? "light" : "dark"} />
