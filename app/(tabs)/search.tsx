@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { router } from 'expo-router';
@@ -12,17 +12,35 @@ import {
   Award,
   Clock,
   MessageCircle,
-  Send
+  Send,
+  Crown,
+  X,
+  Bot,
+  User as UserIcon,
+  ArrowRight
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
+
+interface Message {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
 
 export default function SearchScreen() {
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIMode, setIsAIMode] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputText, setInputText] = useState('');
+  const [freeChatsUsed, setFreeChatsUsed] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
 
   const styles = createStyles(theme);
+  const MAX_FREE_CHATS = 3;
 
   const aiSuggestions = [
     "Best tech stocks under $100",
@@ -41,8 +59,59 @@ export default function SearchScreen() {
     "Amazon cloud growth"
   ];
 
-  const handleChatPress = () => {
-    router.push('/chat');
+  const sendMessage = async () => {
+    if (!inputText.trim()) return;
+
+    if (freeChatsUsed >= MAX_FREE_CHATS) {
+      setShowPremiumModal(true);
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: inputText,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    setIsTyping(true);
+    setFreeChatsUsed(prev => prev + 1);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        text: getAIResponse(inputText),
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, aiResponse]);
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  const getAIResponse = (input: string): string => {
+    const responses = [
+      "Based on current market trends, AAPL shows strong fundamentals with a P/E ratio of 28.3 and consistent revenue growth. The stock has good momentum for long-term investment.",
+      "For dividend investing, consider stocks like JNJ, PG, and KO. These companies have a history of consistent dividend payments and growth over decades.",
+      "The tech sector is experiencing volatility due to AI developments and interest rate changes. Focus on companies with strong balance sheets and innovative products.",
+      "Portfolio diversification is key to managing risk. Consider allocating across different sectors: 30% tech, 20% healthcare, 15% financials, 15% consumer goods, and 20% bonds/REITs."
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const handleUpgradeToPremium = () => {
+    setShowPremiumModal(false);
+    Alert.alert(
+      'Upgrade to Premium',
+      'Get unlimited AI chats, advanced analysis, and exclusive features for just ₹999/month.',
+      [
+        { text: 'Maybe Later', style: 'cancel' },
+        { text: 'Upgrade Now', onPress: () => router.push('/(tabs)/premium') }
+      ]
+    );
   };
 
   return (
@@ -74,42 +143,121 @@ export default function SearchScreen() {
           </View>
         </View>
 
-        {/* AI Chat Button */}
-        <TouchableOpacity style={styles.chatButton} onPress={handleChatPress}>
-          <LinearGradient
-            colors={[theme.colors.accent, '#A855F7']}
-            style={styles.chatGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <MessageCircle size={24} color="#FFFFFF" />
-            <View style={styles.chatContent}>
-              <Text style={styles.chatTitle}>Start AI Chat</Text>
-              <Text style={styles.chatSubtitle}>Get personalized stock advice</Text>
+        {/* AI Chat Section */}
+        <View style={[styles.chatSection, { backgroundColor: theme.colors.surface }]}>
+          <View style={styles.chatHeader}>
+            <View style={styles.chatHeaderLeft}>
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.accent]}
+                style={styles.botAvatar}
+              >
+                <Bot size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <View>
+                <Text style={[styles.chatTitle, { color: theme.colors.text }]}>AI Assistant</Text>
+                <Text style={[styles.chatSubtitle, { color: theme.colors.textSecondary }]}>
+                  {freeChatsUsed}/{MAX_FREE_CHATS} free chats used
+                </Text>
+              </View>
             </View>
-            <Send size={20} color="rgba(255,255,255,0.8)" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* AI Features */}
-        <LinearGradient
-          colors={[theme.colors.accent, '#A855F7']}
-          style={styles.aiCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.aiHeader}>
-            <Brain size={24} color="#FFFFFF" />
-            <Text style={styles.aiTitle}>AI Assistant</Text>
+            <View style={[styles.premiumBadge, { backgroundColor: theme.colors.warning }]}>
+              <Crown size={12} color="#FFFFFF" />
+              <Text style={styles.premiumBadgeText}>Premium</Text>
+            </View>
           </View>
-          <Text style={styles.aiDescription}>
-            Get personalized stock recommendations based on your portfolio and risk tolerance
-          </Text>
-          <TouchableOpacity style={styles.aiCta}>
-            <Text style={styles.aiCtaText}>Try AI Analysis</Text>
-            <Sparkles size={16} color={theme.colors.accent} />
-          </TouchableOpacity>
-        </LinearGradient>
+
+          {/* Chat Messages */}
+          {messages.length > 0 && (
+            <View style={styles.messagesContainer}>
+              {messages.slice(-4).map((message) => (
+                <View key={message.id} style={styles.messageWrapper}>
+                  <View style={[
+                    styles.messageBubble,
+                    message.isUser ? styles.userMessage : styles.aiMessage,
+                    { 
+                      backgroundColor: message.isUser ? theme.colors.primary : theme.colors.background,
+                    }
+                  ]}>
+                    {!message.isUser && (
+                      <LinearGradient
+                        colors={[theme.colors.primary, theme.colors.accent]}
+                        style={styles.messageAvatar}
+                      >
+                        <Bot size={12} color="#FFFFFF" />
+                      </LinearGradient>
+                    )}
+                    <Text style={[
+                      styles.messageText,
+                      { color: message.isUser ? '#FFFFFF' : theme.colors.text }
+                    ]}>
+                      {message.text}
+                    </Text>
+                    {message.isUser && (
+                      <View style={[styles.userAvatar, { backgroundColor: theme.colors.secondary }]}>
+                        <UserIcon size={12} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+
+              {isTyping && (
+                <View style={styles.typingIndicator}>
+                  <LinearGradient
+                    colors={[theme.colors.primary, theme.colors.accent]}
+                    style={styles.typingAvatar}
+                  >
+                    <Bot size={12} color="#FFFFFF" />
+                  </LinearGradient>
+                  <View style={[styles.typingBubble, { backgroundColor: theme.colors.background }]}>
+                    <Text style={[styles.typingText, { color: theme.colors.textSecondary }]}>
+                      AI is typing...
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Chat Input */}
+          <View style={[styles.chatInputContainer, { borderTopColor: theme.colors.border }]}>
+            <View style={[styles.chatInputWrapper, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }]}>
+              <TextInput
+                style={[styles.chatInput, { color: theme.colors.text }]}
+                placeholder={freeChatsUsed >= MAX_FREE_CHATS ? "Upgrade to continue chatting..." : "Ask me anything about stocks..."}
+                placeholderTextColor={theme.colors.textTertiary}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+                editable={freeChatsUsed < MAX_FREE_CHATS}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendButton, 
+                  { 
+                    backgroundColor: (inputText.trim() && freeChatsUsed < MAX_FREE_CHATS) ? theme.colors.primary : theme.colors.surfaceSecondary 
+                  }
+                ]}
+                onPress={sendMessage}
+                disabled={!inputText.trim() || freeChatsUsed >= MAX_FREE_CHATS}
+              >
+                <Send size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            
+            {freeChatsUsed >= MAX_FREE_CHATS && (
+              <TouchableOpacity 
+                style={[styles.upgradeButton, { backgroundColor: theme.colors.warning }]}
+                onPress={() => setShowPremiumModal(true)}
+              >
+                <Crown size={16} color="#FFFFFF" />
+                <Text style={styles.upgradeButtonText}>Upgrade for Unlimited Chats</Text>
+                <ArrowRight size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
@@ -171,24 +319,61 @@ export default function SearchScreen() {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Premium Features */}
-        <LinearGradient
-          colors={[theme.colors.surface, theme.colors.surfaceSecondary]}
-          style={[styles.premiumCard, { borderColor: theme.colors.border }]}
-        >
-          <View style={styles.premiumHeader}>
-            <Award size={24} color={theme.colors.warning} />
-            <Text style={[styles.premiumTitle, { color: theme.colors.text }]}>Premium AI Features</Text>
-          </View>
-          <Text style={[styles.premiumDescription, { color: theme.colors.textSecondary }]}>
-            Unlock advanced AI analysis, personalized recommendations, and real-time alerts
-          </Text>
-          <TouchableOpacity style={[styles.premiumButton, { backgroundColor: theme.colors.warning }]}>
-            <Text style={styles.premiumButtonText}>Upgrade to Premium</Text>
-          </TouchableOpacity>
-        </LinearGradient>
       </ScrollView>
+
+      {/* Premium Modal */}
+      <Modal
+        visible={showPremiumModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowPremiumModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <TouchableOpacity 
+              style={styles.modalClose}
+              onPress={() => setShowPremiumModal(false)}
+            >
+              <X size={24} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+            
+            <LinearGradient
+              colors={[theme.colors.primary, theme.colors.accent]}
+              style={styles.modalHeader}
+            >
+              <Crown size={32} color="#FFFFFF" />
+              <Text style={styles.modalTitle}>Upgrade to Premium</Text>
+              <Text style={styles.modalSubtitle}>Unlock unlimited AI conversations</Text>
+            </LinearGradient>
+
+            <View style={styles.modalFeatures}>
+              <View style={styles.modalFeature}>
+                <MessageCircle size={20} color={theme.colors.primary} />
+                <Text style={[styles.modalFeatureText, { color: theme.colors.text }]}>Unlimited AI chats</Text>
+              </View>
+              <View style={styles.modalFeature}>
+                <Brain size={20} color={theme.colors.primary} />
+                <Text style={[styles.modalFeatureText, { color: theme.colors.text }]}>Advanced market analysis</Text>
+              </View>
+              <View style={styles.modalFeature}>
+                <TrendingUp size={20} color={theme.colors.primary} />
+                <Text style={[styles.modalFeatureText, { color: theme.colors.text }]}>Real-time alerts</Text>
+              </View>
+              <View style={styles.modalFeature}>
+                <Award size={20} color={theme.colors.primary} />
+                <Text style={[styles.modalFeatureText, { color: theme.colors.text }]}>Exclusive insights</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.modalUpgradeButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleUpgradeToPremium}
+            >
+              <Text style={styles.modalUpgradeButtonText}>Upgrade for ₹999/month</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -247,79 +432,162 @@ const createStyles = (theme: any) => StyleSheet.create({
   aiButtonActive: {
     backgroundColor: theme.colors.primary,
   },
-  chatButton: {
+  chatSection: {
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     borderRadius: theme.borderRadius.xl,
-    overflow: 'hidden',
+    padding: theme.spacing.lg,
     shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  chatGradient: {
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  chatHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
-  chatContent: {
-    flex: 1,
+  botAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chatTitle: {
-    fontSize: theme.typography.h3.fontSize,
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  chatSubtitle: {
-    fontSize: theme.typography.caption.fontSize,
-    fontFamily: 'Inter-Regular',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  aiCard: {
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-    gap: theme.spacing.sm,
-  },
-  aiTitle: {
-    fontSize: theme.typography.h3.fontSize,
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-  },
-  aiDescription: {
-    fontSize: theme.typography.body.fontSize,
-    fontFamily: 'Inter-Regular',
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: theme.spacing.lg,
-    lineHeight: 24,
-  },
-  aiCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  aiCtaText: {
     fontSize: theme.typography.body.fontSize,
     fontFamily: 'Inter-SemiBold',
+  },
+  chatSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  premiumBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
+  messagesContainer: {
+    maxHeight: 200,
+    marginBottom: theme.spacing.md,
+  },
+  messageWrapper: {
+    marginBottom: theme.spacing.sm,
+  },
+  messageBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: '85%',
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  userMessage: {
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 4,
+  },
+  aiMessage: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  messageAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: theme.borderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: theme.borderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  typingAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: theme.borderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  typingBubble: {
+    borderRadius: theme.borderRadius.lg,
+    borderBottomLeftRadius: 4,
+    padding: theme.spacing.sm,
+  },
+  typingText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
+  },
+  chatInputContainer: {
+    borderTopWidth: 1,
+    paddingTop: theme.spacing.md,
+  },
+  chatInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  chatInput: {
+    flex: 1,
+    fontSize: theme.typography.body.fontSize,
+    fontFamily: 'Inter-Regular',
+    maxHeight: 80,
+    paddingVertical: theme.spacing.xs,
+  },
+  sendButton: {
+    width: 28,
+    height: 28,
+    borderRadius: theme.borderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  upgradeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+  },
+  upgradeButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
   },
   quickActions: {
     flexDirection: 'row',
@@ -402,43 +670,75 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: theme.typography.body.fontSize,
     fontFamily: 'Inter-Medium',
   },
-  premiumCard: {
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    shadowColor: theme.colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
   },
-  premiumHeader: {
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  modalClose: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    right: theme.spacing.md,
+    zIndex: 1,
+    width: 32,
+    height: 32,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+  },
+  modalFeatures: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  modalFeature: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
   },
-  premiumTitle: {
-    fontSize: theme.typography.h3.fontSize,
+  modalFeatureText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  modalUpgradeButton: {
+    margin: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  modalUpgradeButtonText: {
+    fontSize: 18,
     fontFamily: 'Inter-Bold',
-  },
-  premiumDescription: {
-    fontSize: theme.typography.body.fontSize,
-    fontFamily: 'Inter-Regular',
-    marginBottom: theme.spacing.lg,
-    lineHeight: 24,
-  },
-  premiumButton: {
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  premiumButtonText: {
-    fontSize: theme.typography.body.fontSize,
-    fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
   },
 });

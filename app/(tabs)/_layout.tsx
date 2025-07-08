@@ -4,8 +4,7 @@ import {
   Search, 
   Filter, 
   Heart, 
-  User,
-  Crown
+  User
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -70,15 +69,6 @@ export default function TabLayout() {
           title: 'Watchlist',
           tabBarIcon: ({ size, color }) => (
             <Heart size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="premium"
-        options={{
-          title: 'Premium',
-          tabBarIcon: ({ size, color }) => (
-            <Crown size={size} color={color} />
           ),
         }}
       />
