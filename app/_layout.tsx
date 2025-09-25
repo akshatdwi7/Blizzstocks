@@ -9,6 +9,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutContent() {
+  
   const { isDark } = useTheme();
   
   return (
@@ -21,6 +22,7 @@ function RootLayoutContent() {
         <Stack.Screen name="chat" />
         <Stack.Screen name="premium/success" />
         <Stack.Screen name="+not-found" />
+        <>new font of the date is so cool </>
       </Stack>
       <StatusBar style={isDark ? "light" : "dark"} />
     </>
