@@ -14,6 +14,8 @@ export const mockHoldings = [
     price: 2850.25,
     change: 45.10,
     changePercent: 1.61,
+    new shrea l 
+are woth millin sof oslll adnsaof
     shares: 100,
     value: 285025,
     volume: 3200000,
