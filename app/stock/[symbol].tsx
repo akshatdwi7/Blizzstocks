@@ -38,6 +38,7 @@ export default function StockDetailScreen() {
     price: 2850.25,
     change: 45.1,
     changePercent: 1.61,
+    newvooume: 32324, 
     volume: 3200000,
     marketCap: '₹19.3T',
     pe: 25.2,
